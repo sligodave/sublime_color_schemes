@@ -10,9 +10,14 @@ try:
     from Utils.packages import find_all_packages
     from Utils.touch import add_event_handler_async
 except ImportError:
-    # Allow for repository name
-    from sublime_utils.packages import find_all_packages
-    from sublime_utils.touch import add_event_handler_async
+    try:
+        # Allow for repository name
+        from sublime_utils.packages import find_all_packages
+        from sublime_utils.touch import add_event_handler_async
+    except ImportError:
+        print('[ColorSchemes] Please install the sublime_utils plugin (Utils) also.')
+        print('It can be found here: https://github.com/sligodave/sublime_utils/')
+        find_all_packages = add_event_handler_async = None
 
 
 COLOR_SCHEMES_INSTANCE = None
@@ -216,7 +221,16 @@ class ColorSchemes:
         self.orig_color_scheme = self.view.settings().get('color_scheme', None)
 
 
-class ColorSchemesCloseCommand(sublime_plugin.WindowCommand):
+class BaseColorSchemesCommand(sublime_plugin.WindowCommand):
+    def is_enabled(self):
+        if add_event_handler_async is None:
+            return False
+        return True
+
+    is_visible = is_enabled
+
+
+class ColorSchemesCloseCommand(BaseColorSchemesCommand):
     """
     window.run_command('color_schemes_close')
     """
@@ -225,7 +239,7 @@ class ColorSchemesCloseCommand(sublime_plugin.WindowCommand):
             COLOR_SCHEMES_INSTANCE.close()
 
 
-class ColorSchemesOpenCommand(sublime_plugin.WindowCommand):
+class ColorSchemesOpenCommand(BaseColorSchemesCommand):
     """
     window.run_command('color_schemes_open')
     """
@@ -233,7 +247,7 @@ class ColorSchemesOpenCommand(sublime_plugin.WindowCommand):
         ColorSchemes(self.window)
 
 
-class ColorSchemesToggleCommand(sublime_plugin.WindowCommand):
+class ColorSchemesToggleCommand(BaseColorSchemesCommand):
     """
     window.run_command('color_schemes_toggle')
     """
