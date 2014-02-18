@@ -48,13 +48,14 @@ base_color = """<dict><key>name</key><string>%s</string><key>scope</key>
 class ColorSchemes:
     def __init__(self, window):
         global COLOR_SCHEMES_INSTANCE
+        self.orig_color_scheme = sublime.load_settings(
+            'Preferences.sublime-settings').get('color_scheme')
         self.view = window.new_file()
         self.change_layout()
-        self.get_color_scheme()
-        self.update_view()
+        self.update_color_scheme_view()
         COLOR_SCHEMES_INSTANCE = self
 
-    def update_view(self):
+    def update_color_scheme_view(self):
         data = '\n Close and Revert Layout \n Restore Color Scheme \n\n'
 
         color_schemes = []
@@ -103,12 +104,8 @@ class ColorSchemes:
         for package_name, file_name in package_and_file_names:
             def handler(package_name, file_name):
                 def handler(view, region, point):
-                    with open(self.user_prefs_path, 'r') as user_prefs_file:
-                        user_prefs = json.load(user_prefs_file)
-                    user_prefs['color_scheme'] = 'Packages/%s/%s' % (
-                        package_name, file_name)
-                    with open(self.user_prefs_path, 'w') as user_prefs_file:
-                        json.dump(user_prefs, user_prefs_file, indent='\t')
+                    self.set_color_scheme('Packages/%s/%s' % (
+                        package_name, file_name))
                 return handler
             handler = handler(package_name, file_name)
 
@@ -130,7 +127,12 @@ class ColorSchemes:
         ######################################################
 
         color_scheme = base_tmTheme % ''.join(color_schemes)
-        color_scheme_path = os.path.join(sublime.packages_path(), 'User', 'color_schemes.tmTheme')
+
+        color_scheme_path = os.path.join(
+            sublime.packages_path(),
+            'User',
+            'color_schemes.tmTheme'
+        )
         with open(color_scheme_path, 'w') as color_scheme_file:
             color_scheme_file.write(color_scheme)
 
@@ -166,14 +168,22 @@ class ColorSchemes:
             add_event_handler_async(self.view, region[1][0], region[5])
         region1 = sublime.Region(1, 26)
         region2 = sublime.Region(27, 49)
-        add_event_handler_async(self.view, region1, lambda x, y, z: self.close())
-        add_event_handler_async(self.view, region2, lambda x, y, z: self.restore_color_scheme())
+        add_event_handler_async(
+            self.view,
+            region1,
+            lambda x, y, z: self.close()
+        )
+        add_event_handler_async(
+            self.view,
+            region2,
+            lambda x, y, z: self.set_color_scheme(self.orig_color_scheme)
+        )
         self.view.add_regions('buttons', [region1, region2], 'button', '', sublime.DRAW_OUTLINED)
         self.view.add_regions('test', [sublime.Region(0, self.view.size())])
 
     def close(self):
         global COLOR_SCHEMES_INSTANCE
-        COLOR_SCHEMES_INSTANCE = None
+        # Reset the window back to it's original layout and delete view
         window = self.view.window()
         window.set_layout(self.orig_layout)
         for g, views in enumerate(self.views_in_groups):
@@ -184,8 +194,10 @@ class ColorSchemes:
         window.focus_view(self.view)
         window.run_command('close')
         window.focus_view(self.active_view)
+        COLOR_SCHEMES_INSTANCE = None
 
     def change_layout(self):
+        # Store original window layout and set the plugin layout
         window = self.view.window()
         self.active_view = window.active_view()
         self.orig_layout = window.get_layout()
@@ -199,23 +211,12 @@ class ColorSchemes:
             "rows": [0.0, 1.0],
             "cells": [[0, 0, 1, 1], [1, 0, 2, 1]]
             })
-
         window.run_command('move_to_group', args={'group': 1})
 
-    def restore_color_scheme(self):
-        if self.orig_color_scheme:
-            with open(self.user_prefs_path, 'r') as user_prefs_file:
-                user_prefs = json.load(user_prefs_file)
-            user_prefs['color_scheme'] = self.orig_color_scheme
-            with open(self.user_prefs_path, 'w') as user_prefs_file:
-                json.dump(user_prefs, user_prefs_file, indent='\t')
-
-    def get_color_scheme(self):
-        self.user_prefs_path = os.path.join(
-            sublime.packages_path(), 'User', 'Preferences.sublime-settings')
-        if not os.path.exists(self.user_prefs_path):
-            open(self.user_prefs_path, 'w').write('{}')
-        self.orig_color_scheme = self.view.settings().get('color_scheme', None)
+    def set_color_scheme(self, color_scheme_file):
+        settings = sublime.load_settings('Preferences.sublime-settings')
+        settings.set('color_scheme', color_scheme_file)
+        sublime.save_settings('Preferences.sublime-settings')
 
 
 class BaseColorSchemesCommand(sublime_plugin.WindowCommand):
