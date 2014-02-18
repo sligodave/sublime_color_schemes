@@ -130,10 +130,7 @@ class ColorSchemes:
         ######################################################
 
         color_scheme = base_tmTheme % ''.join(color_schemes)
-        color_scheme_path = os.path.join(
-            os.path.dirname(__file__),
-            'color_schemes.tmTheme'
-        )
+        color_scheme_path = os.path.join(sublime.packages_path(), 'User', 'color_schemes.tmTheme')
         with open(color_scheme_path, 'w') as color_scheme_file:
             color_scheme_file.write(color_scheme)
 
@@ -153,7 +150,7 @@ class ColorSchemes:
             'line_padding_top': 5,
             'line_padding_bottom': 5,
             'draw_centered': True,
-            'color_scheme': 'Packages/ColorSchemes/color_schemes.tmTheme',
+            'color_scheme': 'Packages/User/color_schemes.tmTheme',
         }
         for name, value in settings.items():
             self.view.settings().set(name, value)
