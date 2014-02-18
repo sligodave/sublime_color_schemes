@@ -36,3 +36,4 @@ nosetests.xml
 .pydevproject
 
 color_schemes.tmTheme
+.DS_Store
